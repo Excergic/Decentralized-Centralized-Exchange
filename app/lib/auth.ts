@@ -2,7 +2,8 @@
 import GoogleProvider from "next-auth/providers/google";
 import db from "@/app/db";
 import { Keypair } from "@solana/web3.js";
-import { Session } from "next-auth";
+import { Account, Profile, Session } from "next-auth";
+import { JWT } from "next-auth/jwt";
 
 export interface session extends Session {
     user: {
@@ -12,6 +13,11 @@ export interface session extends Session {
         uid: string;
     }
 }
+
+interface customJWT extends JWT {
+  uid?: string;
+}
+
 declare module "next-auth" {
   interface Profile {
     picture?: string;
@@ -26,11 +32,11 @@ export const authConfig = {
         clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? ""
       })
   ],
-
+    
   callbacks : {
     //This makes the database user ID available on the client side
-    session: ({ session, token }: any) : session => {
-        const newSession : session = session as session;
+     session: ({ session, token }: {session: Session, token: customJWT}) : session => {
+        const newSession : session = session as session; // to make sure, this session has uid
         
         if(newSession.user && token.uid) {
             newSession.user.uid = token.uid ?? "";
@@ -39,7 +45,7 @@ export const authConfig = {
     },
 
     //Queries the database to find the user by their OAuth provider ID (sub)
-    async jwt({ token, account, profile }: any) {
+    async jwt({ token, account }: {token: customJWT, account: Account | null}) {
         const user = await db.user.findFirst({
             where: {
                 sub: account?.providerAccountId ?? ""
@@ -67,7 +73,7 @@ export const authConfig = {
             return true;
           }
 
-          const keypair = Keypair.generate();
+          const keypair = Keypair.generate(); // generates the keypair
           const publicKey = keypair.publicKey.toBase58();
           const privateKey = keypair.secretKey;
           console.log(`publicKey: ${publicKey}`);

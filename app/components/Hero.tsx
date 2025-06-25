@@ -8,7 +8,7 @@ export const Hero = () => {
     const session = useSession();
 
     return <div className="flex flex-col items-center">
-        <h2 className="text-6xl font-bold">DCEX</h2>
+        <h2 className="text-6xl font-bold">Coin Exchange</h2>
         <p className="text-2xl">Centralized Decentralized Crypto Exchange</p>
         <div className="flex flex-col items-center mt-5">
         {session.data?.user? <SecondaryButton onClick= {() => {

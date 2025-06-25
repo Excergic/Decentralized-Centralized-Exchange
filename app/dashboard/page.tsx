@@ -1,3 +1,4 @@
+
 import { getServerSession } from 'next-auth';
 import { ProfileCard } from '../components/ProfileCard';
 import db from "@/app/db";
@@ -24,7 +25,7 @@ async function getUserWallet() {
     return {error: null, userWallet};
 }
 
-// server ci=onponent
+// server component
 export default async function () {
     const userWallet = await getUserWallet();
 

@@ -1,17 +1,31 @@
 "use client";
+
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Loader from "./Loader";
-import { SecondaryButton } from "./Button";
+import { SecondaryButton, TabButton } from "./Button";
 import { useEffect, useState } from "react";
-import { useTokens } from "../api/hooks/useTokens";
+import { TokenWithBalance, useTokens } from "../api/hooks/useTokens";
 import { TokenList } from "./TokenList";
+import { Swap } from "./Swap";
+
+type Tab = "send" | "withdraw" | "swap" | "add funds" | "tokens"
+
+const tabs: {id: Tab , name: string}[] = [
+    {id: "tokens", name: "Tokens"}, 
+    {id: "send", name: "Send"}, 
+    {id: "withdraw", name: "Withdraw"}, 
+    {id: "swap", name: "Swap"}, 
+    {id: "add funds", name: "Add Funds"}
+]
 
 export const ProfileCard = ({publicKey}: {
     publicKey : string
 }) => {
     const session = useSession();
     const router = useRouter();
+    const [ selectedTab, setSelectedTab ] = useState<Tab>("tokens");
+    const { tokenBalance, loading } = useTokens(publicKey);
 
     if(session.status === "loading") {
         return <Loader />
@@ -29,7 +43,14 @@ export const ProfileCard = ({publicKey}: {
                 image = {session.data?.user?.image ?? ""} 
                 name = {session.data?.user?.name ?? ""} 
             />
-            <Assets publicKey={publicKey} />
+            
+            <div className="flex mt-5 justify-center">
+                {tabs.map((tab => <TabButton active={tab.id === selectedTab} onClick={() => {
+                    setSelectedTab(tab.id)
+                }}>{tab.name}</TabButton>))}
+            </div>
+            <div className={`${selectedTab === "tokens" ? "visible" : "hidden"}`}> <Assets tokenBalance={tokenBalance} loading={loading} publicKey={publicKey} /> </div>
+            <div className={`${selectedTab === "swap" ? "visible" : "hidden"}`}> <Swap tokenBalance={tokenBalance} publicKey={publicKey} /> </div>
             </div>
       </div>
       );
@@ -48,11 +69,16 @@ export const ProfileCard = ({publicKey}: {
         </div>
     }
     
-    function Assets({publicKey}: {
+    function Assets({publicKey, tokenBalance, loading}: {
         publicKey : string
+        tokenBalance: {
+            totalBalance: number;
+            tokens: TokenWithBalance[];
+        } | null
+        loading: boolean
     }) {
         const [ copied, setCopied ] = useState(false);
-        const { tokenBalance, loading } = useTokens(publicKey);
+        
 
         useEffect(() => {
             if(copied) {

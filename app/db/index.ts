@@ -1,6 +1,7 @@
 // app/db/index.ts
 import { PrismaClient } from '@/app/generated/prisma';
 
+//NextJs is making request everytime it restarts the server, PSQL have 100 request limit
 const prismaClientSingleton = () => {
     return new PrismaClient();
   };

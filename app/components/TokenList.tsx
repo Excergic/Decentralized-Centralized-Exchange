@@ -6,7 +6,6 @@ export function TokenList({ tokens }: {
     return <div>
         {tokens.map(t => <TokenRow token = {t} />)}
     </div>
-
 }
 
 function TokenRow({token} : {
@@ -26,7 +25,7 @@ function TokenRow({token} : {
         </div>
         <div className="flex mt-5">
             <div className="font-bold">
-                {token.usdBalance} 
+                {token.usdBalance}
                 <div className="font-thin text-xs">
                 {token.balance}
             </div>
