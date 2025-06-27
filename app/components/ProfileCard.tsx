@@ -102,7 +102,9 @@ export const ProfileCard = ({publicKey}: {
             </div>
             <div className="flex justify-between">
                 <div className="text-6xl font-bold text-gray-400">
-                    ${tokenBalance?.totalBalance.toFixed(2)}
+
+                        ${tokenBalance?.totalBalance.toFixed(2)}
+                        
                     <span className="font-bold text-slate-400 text-3xl">USD</span>
                 </div>
               

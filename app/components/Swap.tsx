@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { SUPPORTED_TOKENS, TokenDetails } from "../lib/tokens";
 import { TokenWithBalance } from "../api/hooks/useTokens";
 import { PrimaryButton, SecondaryButton } from "./Button";
+import axios from "axios";
 
 export const Swap = ({publicKey, tokenBalance} : {
     publicKey : string
@@ -14,13 +15,19 @@ export const Swap = ({publicKey, tokenBalance} : {
     const [ quoteAsset, setQuoteAsset ] = useState(SUPPORTED_TOKENS[1]);
     const [ baseAmount, setBaseAmount ] = useState<string>();
     const [ quoteAmount, setQuoteAmount ] = useState<string>();
-
+    const [ fetchingQuote, setFetchingQuote ] = useState(false);
     // TODO: Use async useEffect that u can cancle
     // Use Debouncing
     useEffect(() => {
         if(!baseAmount) {
             return;
         }
+        setFetchingQuote(true)
+        axios.get(`https://lite-api.jup.ag/swap/v1/quote?inputMint=${baseAsset.mint}&outputMint=${quoteAsset.mint}&amount=${Number(baseAmount) * 10 ** baseAsset.decimal}&slippageBps=50`)
+            .then(res => {
+                setQuoteAmount((Number(res.data.outAmount) / Number(10 ** quoteAsset.decimal)).toString())
+                setFetchingQuote(false)
+            })
 
     },[baseAmount, quoteAmount, baseAsset])
 
@@ -56,7 +63,7 @@ export const Swap = ({publicKey, tokenBalance} : {
         </div>
 
         <div className="border-2 border-gray-600 rounded-lg p-5 ">
-            <SwapInputRow amount={quoteAmount} onSelect={(asset) => {
+            <SwapInputRow inputDisable={true} amount={quoteAmount} onSelect={(asset) => {
                 setQuoteAsset(asset)
             }} selectedToken = {quoteAsset} title={"You Receive:"}/>
         </div>
@@ -70,13 +77,14 @@ export const Swap = ({publicKey, tokenBalance} : {
     
 }
 
-function SwapInputRow({onSelect,amount, selectedToken, onAmountChange, title, subTitle} : {
+function SwapInputRow({onSelect,amount, selectedToken, onAmountChange, title, subTitle, inputDisable} : {
     onSelect: (asset: TokenDetails) => void;
     selectedToken: TokenDetails;
     title: string;
     subTitle?: ReactNode;
     amount?: string;
     onAmountChange?: (value: string) => void;
+    inputDisable?: boolean;
 }) {
     return <div className="flex justify-between p-4">
         <div>
@@ -89,7 +97,7 @@ function SwapInputRow({onSelect,amount, selectedToken, onAmountChange, title, su
         <div>
             <input onChange={(e) => {
                 onAmountChange?.(e.target.value);
-            }} placeholder="0" type="text" className="p-4 outline-none text-4xl" dir="rtl" value={amount} />
+            }} disabled={inputDisable} placeholder="0" type="text" className="p-4 outline-none text-4xl" dir="rtl" value={amount} />
         </div>
        
     </div>

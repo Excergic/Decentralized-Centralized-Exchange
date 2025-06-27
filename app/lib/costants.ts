@@ -20,7 +20,7 @@ export const connection = new Connection("https://api.mainnet-beta.solana.com");
 export async function getSupportedTokens() {
     if (!LAST_UPDATED || new Date().getTime() - LAST_UPDATED >= TOKEN_PRICE_REFRESH_INTERVAL) {
         try {
-            const response = await axios.get("https://api.jup.ag/price/v2?ids=Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB,EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v,So11111111111111111111111111111111111111112&showExtraInfo=true");
+            const response = await axios.get("https://lite-api.jup.ag/price/v2?ids=JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN,So11111111111111111111111111111111111111112&showExtraInfo=true");
             
             prices = response.data.data;
             LAST_UPDATED = new Date().getTime();
