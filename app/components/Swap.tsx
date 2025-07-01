@@ -16,6 +16,7 @@ export const Swap = ({publicKey, tokenBalance} : {
     const [ baseAmount, setBaseAmount ] = useState<string>();
     const [ quoteAmount, setQuoteAmount ] = useState<string>();
     const [ fetchingQuote, setFetchingQuote ] = useState(false);
+    const [ quoteResponse, setQuoteResponse ] = useState(null);
     // TODO: Use async useEffect that u can cancle
     // Use Debouncing
     useEffect(() => {
@@ -27,6 +28,7 @@ export const Swap = ({publicKey, tokenBalance} : {
             .then(res => {
                 setQuoteAmount((Number(res.data.outAmount) / Number(10 ** quoteAsset.decimal)).toString())
                 setFetchingQuote(false)
+                setQuoteResponse(res.data)
             })
 
     },[baseAmount, quoteAmount, baseAsset])
@@ -63,13 +65,16 @@ export const Swap = ({publicKey, tokenBalance} : {
         </div>
 
         <div className="border-2 border-gray-600 rounded-lg p-5 ">
-            <SwapInputRow inputDisable={true} amount={quoteAmount} onSelect={(asset) => {
+            <SwapInputRow inputLoading={fetchingQuote} inputDisable={true} amount={quoteAmount} onSelect={(asset) => {
                 setQuoteAsset(asset)
             }} selectedToken = {quoteAsset} title={"You Receive:"}/>
         </div>
         <div className="flex justify-center pt-4">
         <SecondaryButton onClick={() => {
             // fetch swap
+            axios.post("/api/swap", {
+                quoteResponse
+            })
         }}>Swap</SecondaryButton>
         </div>
         
@@ -77,7 +82,7 @@ export const Swap = ({publicKey, tokenBalance} : {
     
 }
 
-function SwapInputRow({onSelect,amount, selectedToken, onAmountChange, title, subTitle, inputDisable} : {
+function SwapInputRow({onSelect,amount, selectedToken, onAmountChange, title, subTitle, inputDisable, inputLoading} : {
     onSelect: (asset: TokenDetails) => void;
     selectedToken: TokenDetails;
     title: string;
@@ -85,6 +90,7 @@ function SwapInputRow({onSelect,amount, selectedToken, onAmountChange, title, su
     amount?: string;
     onAmountChange?: (value: string) => void;
     inputDisable?: boolean;
+    inputLoading?: boolean;
 }) {
     return <div className="flex justify-between p-4">
         <div>
