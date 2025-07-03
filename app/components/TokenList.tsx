@@ -25,9 +25,9 @@ function TokenRow({token} : {
         </div>
         <div className="flex mt-5">
             <div className="font-bold">
-                {token.usdBalance}
+                {Number(token.usdBalance).toFixed(3)}
                 <div className="font-thin text-xs">
-                {token.balance}
+                {Number(token.balance).toFixed(3)}
             </div>
             </div>
             

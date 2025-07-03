@@ -4,6 +4,15 @@ import { NextRequest, NextResponse } from "next/server";
 import db from "@/app/db";
 import { Connection, Keypair, VersionedTransaction } from "@solana/web3.js";
 
+declare module "next-auth" {
+  interface User {
+    publicKey?: string;
+  }
+
+  interface Session {
+    user?: User;
+  }
+}
 
 export async function POST(req: NextRequest) {
     const connection = new Connection("https://api.mainnet-beta.solana.com")

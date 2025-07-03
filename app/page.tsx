@@ -3,7 +3,7 @@
 
 import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Appbar } from "./components/Navbar";
+import { Navbar } from "./components/Navbar";
 import { SecondaryButton } from "./components/Button";
 import { CryptoChart } from "./components/CryptoCharts";
 
@@ -21,26 +21,28 @@ export default function HomePage() {
 
   return (
     <div className="bg-gradient-to-br from-gray-900 via-black to-gray-800 text-white min-h-screen">
-      <Appbar />
+      <Navbar />
       <main className="container mx-auto px-4 pt-32 pb-20">
         
-        {/* Hero Section with Solana Branding */}
+        {/* Hero Section with Dynamic CTA */}
         <div className="text-center mb-16">
           <h1 className="text-5xl md:text-6xl font-bold mb-4">
             Your Secure Wallet on{' '}
-            <span className="bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
-              Sol
-            </span>
-            <span className="bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
-              ana
-            </span>
+              <span className="bg-gradient-to-r from-[#00D4FF] to-[#9945FF] bg-clip-text text-transparent">
+                Sol
+              </span>
+              <span className="bg-gradient-to-r from-[#9945FF] to-[#14F195] bg-clip-text text-transparent">
+                ana
+              </span>
           </h1>
           <p className="text-lg md:text-xl text-gray-400 max-w-3xl mx-auto mb-8">
-            Instantly create a secure, non-custodial wallet and start exploring the
-            world of decentralized finance. Zero fees, maximum security.
+            {session 
+              ? "Welcome back! Access your secure wallet and start trading."
+              : "Instantly create a secure, non-custodial wallet and start exploring the world of decentralized finance. Zero fees, maximum security."
+            }
           </p>
-          <SecondaryButton onClick={handleAuthAction}>
-            Login to Get a Wallet
+          <SecondaryButton onClick={handleAuthAction} >
+            {session ? "Go to Dashboard" : "Login to Get a Wallet"}
           </SecondaryButton>
         </div>
 

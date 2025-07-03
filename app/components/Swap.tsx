@@ -1,7 +1,9 @@
+// components/Swap.tsx
 import { ReactNode, useEffect, useState } from "react";
 import { SUPPORTED_TOKENS, TokenDetails } from "../lib/tokens";
 import { TokenWithBalance } from "../api/hooks/useTokens";
-import { PrimaryButton, SecondaryButton } from "./Button";
+import { PrimaryButton } from "./Button";
+import { ArrowUpDown, ChevronDown, Wallet, Settings, RefreshCw } from "lucide-react";
 import axios from "axios";
 
 export const Swap = ({publicKey, tokenBalance} : {
@@ -13,83 +15,240 @@ export const Swap = ({publicKey, tokenBalance} : {
 }) => {
     const [ baseAsset, setBaseAsset ] = useState(SUPPORTED_TOKENS[0]);
     const [ quoteAsset, setQuoteAsset ] = useState(SUPPORTED_TOKENS[1]);
-    const [ baseAmount, setBaseAmount ] = useState<string>();
-    const [ quoteAmount, setQuoteAmount ] = useState<string>();
+    const [ baseAmount, setBaseAmount ] = useState<string>("");
+    const [ quoteAmount, setQuoteAmount ] = useState<string>("");
     const [ fetchingQuote, setFetchingQuote ] = useState(false);
     const [ quoteResponse, setQuoteResponse ] = useState(null);
-    // TODO: Use async useEffect that u can cancle
-    // Use Debouncing
+    const [notification, setNotification] = useState<{ type: "success" | "error", message: string } | null>(null);
+    const [slippage, setSlippage] = useState(0.5);
+    const [swapping, setSwapping] = useState(false);
+
+    // Debounced quote fetching
     useEffect(() => {
-        if(!baseAmount) {
+        if(!baseAmount || parseFloat(baseAmount) === 0) {
+            setQuoteAmount("");
             return;
         }
-        setFetchingQuote(true)
-        axios.get(`https://lite-api.jup.ag/swap/v1/quote?inputMint=${baseAsset.mint}&outputMint=${quoteAsset.mint}&amount=${Number(baseAmount) * 10 ** baseAsset.decimal}&slippageBps=50`)
-            .then(res => {
-                setQuoteAmount((Number(res.data.outAmount) / Number(10 ** quoteAsset.decimal)).toString())
-                setFetchingQuote(false)
-                setQuoteResponse(res.data)
+
+        const timeoutId = setTimeout(() => {
+            setFetchingQuote(true);
+            axios.get(`https://quote-api.jup.ag/v6/quote`, {
+                params: {
+                    inputMint: baseAsset.mint,
+                    outputMint: quoteAsset.mint,
+                    amount: Number(baseAmount) * 10 ** baseAsset.decimal,
+                    slippageBps: slippage * 100,
+                }
             })
+            .then(res => {
+                setQuoteAmount((Number(res.data.outAmount) / Number(10 ** quoteAsset.decimal)).toFixed(6));
+                setQuoteResponse(res.data);
+            })
+            .catch(err => {
+                console.error("Quote fetch error:", err);
+                setQuoteAmount("");
+                setNotification({ type: "error", message: "Failed to get quote" });
+            })
+            .finally(() => {
+                setFetchingQuote(false);
+            });
+        }, 500); // 500ms debounce
 
-    },[baseAmount, quoteAmount, baseAsset])
+        return () => clearTimeout(timeoutId);
+    }, [baseAmount, baseAsset, quoteAsset, slippage]);
 
-    return <div>
-        <div className="text-green-700 font-bold text-2xl text-center my-5">
-            Swap Token
-        </div>
-        <div className="border-2 border-gray-600 rounded-lg p-5">
-            <SwapInputRow 
-            amount={baseAmount}
-            onAmountChange = {(value : string) => {
-                setBaseAmount(value)
-            }} 
-            onSelect={(asset) => {
-                setBaseAsset(asset)
-            }} selectedToken = {baseAsset} title={"You Pay:"} 
-            subTitle=
-            {<div className="text-gray-400 pt-3">
-                {`Current Balance: ${tokenBalance?.tokens.find(x => x.name === baseAsset.name)?.balance} ${baseAsset.name}`}
-            </div>}
-        />
-        </div>
-        <div className="flex justify-center">
-            <div onClick={() => {
-                let baseAsetTemp = baseAsset
-                setBaseAsset(quoteAsset)    
-                setQuoteAsset(baseAsetTemp)
-            }} className="cursor-pointer rounded-full w-9 h-9 border-gray-700 mt-[-20px] absolute  bg-gray-700">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" className=" w-full h-full">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" />
-                </svg>
+    // Auto-dismiss notification
+    useEffect(() => {
+        if (notification) {
+            const timer = setTimeout(() => setNotification(null), 4000);
+            return () => clearTimeout(timer);
+        }
+    }, [notification]);
+
+    const handleSwap = async () => {
+        if (!quoteResponse) {
+            setNotification({ type: "error", message: "No quote available" });
+            return;
+        }
+
+        setSwapping(true);
+        try {
+            const res = await axios.post("/api/swap", { quoteResponse });
+            if (res.data.txid) {
+                setNotification({ type: "success", message: "Swap successful!" });
+                setBaseAmount("");
+                setQuoteAmount("");
+                setQuoteResponse(null);
+            } else {
+                setNotification({ type: "error", message: "Swap failed!" });
+            }
+        } catch (e) {
+            console.error("Swap error:", e);
+            setNotification({ type: "error", message: "Swap failed!" });
+        } finally {
+            setSwapping(false);
+        }
+    };
+
+    const getButtonText = () => {
+        if (swapping) return "";
+        if (!baseAmount || parseFloat(baseAmount) === 0) return "Enter an amount";
+        if (fetchingQuote) return "Getting quote...";
+        return "Swap";
+    };
+
+    const isButtonDisabled = !baseAmount || parseFloat(baseAmount) === 0 || fetchingQuote || swapping;
+
+    const handleMaxClick = () => {
+        const balance = tokenBalance?.tokens.find(x => x.name === baseAsset.name)?.balance;
+        if (balance) {
+            setBaseAmount(parseFloat(balance).toFixed(3));
+        }
+    };
+
+    const handleHalfClick = () => {
+        const balance = tokenBalance?.tokens.find(x => x.name === baseAsset.name)?.balance;
+        if (balance) {
+            setBaseAmount((parseFloat(balance) / 2).toFixed(3));
+        }
+    };
+
+    return (
+        <div className="max-w-md mx-auto">
+            {/* Notification */}
+            {notification && (
+                <div className={`fixed top-5 right-5 px-6 py-4 rounded-xl shadow-lg text-white font-semibold transition-all duration-300 z-50 ${
+                    notification.type === "success" ? "bg-green-600" : "bg-red-600"
+                }`}>
+                    {notification.message}
+                </div>
+            )}
+
+            {/* Swap Container */}
+            <div className="bg-[#1a1b23] rounded-2xl p-6 border border-gray-700/50 shadow-2xl">
+                
+                {/* Header */}
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold text-white">Swap Tokens</h2>
+                    <div className="flex items-center gap-2">
+                        <button className="p-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors">
+                            <Settings size={16} className="text-gray-400" />
+                        </button>
+                        <button className="p-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors">
+                            <RefreshCw size={16} className="text-gray-400" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Selling Section */}
+                <div className="bg-[#131620] rounded-xl p-5 mb-2">
+                    <SwapInputRow 
+                        amount={baseAmount}
+                        onAmountChange={(value: string) => setBaseAmount(value)} 
+                        onSelect={(asset) => setBaseAsset(asset)} 
+                        selectedToken={baseAsset} 
+                        title="You Pay" 
+                        tokenBalance={tokenBalance}
+                        subTitle={
+                            <div className="flex items-center justify-between text-xs text-gray-400 mt-3">
+                                <div className="flex items-center gap-1">
+                                    <Wallet size={12} />
+                                    <span>
+                                        {tokenBalance?.tokens.find(x => x.name === baseAsset.name)?.balance 
+                                            ? parseFloat(tokenBalance.tokens.find(x => x.name === baseAsset.name)!.balance).toFixed(3)
+                                            : "0.000"} {baseAsset.name}
+                                    </span>
+                                </div>
+                                <div className="flex gap-1">
+                                    <button 
+                                        onClick={handleHalfClick}
+                                        className="px-2 py-1 bg-gray-700/50 rounded text-xs font-medium hover:bg-gray-600/50 transition-colors"
+                                    >
+                                        HALF
+                                    </button>
+                                    <button 
+                                        onClick={handleMaxClick}
+                                        className="px-2 py-1 bg-gray-700/50 rounded text-xs font-medium hover:bg-gray-600/50 transition-colors"
+                                    >
+                                        MAX
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    />
+                </div>
+
+                {/* Swap Direction Button */}
+                <div className="flex justify-center relative -my-3 z-10">
+                    <button 
+                        onClick={() => {
+                            const temp = baseAsset;
+                            setBaseAsset(quoteAsset);    
+                            setQuoteAsset(temp);
+                            // Clear amounts when swapping
+                            setBaseAmount("");
+                            setQuoteAmount("");
+                        }} 
+                        className="bg-[#2a2d3a] hover:bg-[#3a3d4a] border-4 border-[#1a1b23] rounded-full p-3 transition-all duration-200 hover:scale-110"
+                    >
+                        <ArrowUpDown size={18} className="text-gray-300" />
+                    </button>
+                </div>
+
+                {/* Buying Section */}
+                <div className="bg-[#131620] rounded-xl p-5 mt-2">
+                    <SwapInputRow 
+                        inputLoading={fetchingQuote} 
+                        inputDisable={true} 
+                        amount={quoteAmount} 
+                        onSelect={(asset) => setQuoteAsset(asset)} 
+                        selectedToken={quoteAsset} 
+                        title="You Receive"
+                        tokenBalance={tokenBalance}
+                        subTitle={
+                            <div className="flex items-center gap-1 text-xs text-gray-400 mt-3">
+                                <Wallet size={12} />
+                                <span>
+                                    {tokenBalance?.tokens.find(x => x.name === quoteAsset.name)?.balance 
+                                        ? parseFloat(tokenBalance.tokens.find(x => x.name === quoteAsset.name)!.balance).toFixed(3)
+                                        : "0.000"} {quoteAsset.name}
+                                </span>
+                            </div>
+                        }
+                    />
+                </div>
+
+                {/* Swap Info */}
+                {baseAmount && quoteAmount && !fetchingQuote && (
+                    <div className="mt-4 p-3 bg-gray-800/30 rounded-lg">
+                        <div className="flex justify-between text-sm text-gray-400">
+                            <span>Rate</span>
+                            <span>1 {baseAsset.name} ≈ {(parseFloat(quoteAmount) / parseFloat(baseAmount)).toFixed(6)} {quoteAsset.name}</span>
+                        </div>
+                        <div className="flex justify-between text-sm text-gray-400 mt-1">
+                            <span>Slippage</span>
+                            <span>{slippage}%</span>
+                        </div>
+                    </div>
+                )}
+
+                {/* Swap Button */}
+                <div className="mt-6">
+                    <PrimaryButton 
+                        onClick={handleSwap}
+                        className="w-full py-4 text-lg font-semibold"
+                        disabled={isButtonDisabled}
+                        loading={swapping}
+                    >
+                        {getButtonText()}
+                    </PrimaryButton>
+                </div>
             </div>
         </div>
+    );
+};
 
-        <div className="border-2 border-gray-600 rounded-lg p-5 ">
-            <SwapInputRow inputLoading={fetchingQuote} inputDisable={true} amount={quoteAmount} onSelect={(asset) => {
-                setQuoteAsset(asset)
-            }} selectedToken = {quoteAsset} title={"You Receive:"}/>
-        </div>
-        <div className="flex justify-center pt-4">
-        <SecondaryButton onClick={async () => {
-            // fetch swap
-            try{
-                const res = await axios.post("/api/swap", {
-                    quoteResponse
-                });
-                if(res.data.txid){
-                    alert("Swap successful!")
-                }
-            }catch(e){
-                alert("Swap failed!")
-            }
-        }}>Swap</SecondaryButton>
-        </div>
-        
-    </div>
-    
-}
-
-function SwapInputRow({onSelect,amount, selectedToken, onAmountChange, title, subTitle, inputDisable, inputLoading} : {
+function SwapInputRow({onSelect, amount, selectedToken, onAmountChange, title, subTitle, inputDisable, inputLoading, tokenBalance} : {
     onSelect: (asset: TokenDetails) => void;
     selectedToken: TokenDetails;
     title: string;
@@ -98,46 +257,93 @@ function SwapInputRow({onSelect,amount, selectedToken, onAmountChange, title, su
     onAmountChange?: (value: string) => void;
     inputDisable?: boolean;
     inputLoading?: boolean;
+    tokenBalance?: any;
 }) {
-    return <div className="flex justify-between p-4">
+    return (
         <div>
-            <div className="text-sm font-bold text-gray-400 mb-2">
-                {title}
+            <div className="flex justify-between items-center mb-4">
+                <span className="text-sm text-gray-400 font-medium">{title}</span>
             </div>
-            <AssetSelector selectedToken={selectedToken} onSelect={onSelect}/>
+            <div className="flex justify-between items-center">
+                <AssetSelector selectedToken={selectedToken} onSelect={onSelect}/>
+                <div className="text-right flex-1 ml-4">
+                    <input 
+                        onChange={(e) => onAmountChange?.(e.target.value)} 
+                        disabled={inputDisable} 
+                        placeholder="0.00" 
+                        type="number"
+                        step="any"
+                        className="bg-transparent text-right outline-none text-4xl font-mono text-white placeholder-gray-500 w-full" 
+                        value={inputLoading ? "" : amount || ""} 
+                    />
+                    {inputLoading && (
+                        <div className="text-right text-4xl font-mono text-gray-400">...</div>
+                    )}
+                    <div className="text-sm text-gray-500 mt-1">≈ $0.00</div>
+                </div>
+            </div>
             {subTitle}
         </div>
-        <div>
-            <input onChange={(e) => {
-                onAmountChange?.(e.target.value);
-            }} disabled={inputDisable} placeholder="0" type="text" className="p-4 outline-none text-4xl" dir="rtl" value={amount} />
-        </div>
-       
-    </div>
+    );
 }
 
 function AssetSelector({selectedToken, onSelect} : {
     onSelect: (asset: TokenDetails) => void;
     selectedToken: TokenDetails
 }) {
-    return <div>
-        
-        <select onChange={(e) => {
-            const selectedToken = SUPPORTED_TOKENS.find(x => x.name === e.target.value)
-            if(selectedToken){
-                onSelect(selectedToken)
-            }
-        }} id="tokens" className="bg-gray-900 text-white rounded-lg 
-        text-sm px-5 py-2.5 me-2 mb-2 dark:bg-gray-800 dark:hover:bg-gray-700 
-        focus:outline-none dark:focus:ring-gray-700 dark:border-gray-700">
-            <option selected = {true} value={selectedToken.name}>
-                <img src={selectedToken.image} className="w-10" />{selectedToken.name}
-            </option>
-            {SUPPORTED_TOKENS.filter(asset => asset.name !== selectedToken.name).map(asset => <option key={asset.name} 
-            onClick={() => onSelect(asset)} value={asset.name}><img src={asset.image} className="w-10" />{asset.name}</option>)}
-            <option value="SOL">
-                <img src={SUPPORTED_TOKENS[0].image} className="w-10" />{SUPPORTED_TOKENS[0].name}
-            </option>
-        </select>
-    </div>
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+        <div className="relative">
+            <button 
+                onClick={() => setIsOpen(!isOpen)}
+                className="flex items-center gap-3 bg-[#2a2d3a] hover:bg-[#3a3d4a] rounded-xl px-4 py-3 transition-colors min-w-[140px]"
+            >
+                <img 
+                    src={selectedToken.image} 
+                    alt={selectedToken.name} 
+                    className="w-8 h-8 rounded-full"
+                    onError={(e) => {
+                        e.currentTarget.src = `https://via.placeholder.com/32x32/6b7280/ffffff?text=${selectedToken.name.charAt(0)}`;
+                    }}
+                />
+                <span className="font-semibold text-white">{selectedToken.name}</span>
+                <ChevronDown size={16} className="text-gray-400" />
+            </button>
+
+            {isOpen && (
+                <>
+                    <div 
+                        className="fixed inset-0 z-10" 
+                        onClick={() => setIsOpen(false)}
+                    />
+                    <div className="absolute top-full left-0 mt-2 bg-[#2a2d3a] rounded-xl border border-gray-600 shadow-xl z-20 min-w-[200px] max-h-60 overflow-y-auto">
+                        {SUPPORTED_TOKENS.map(asset => (
+                            <button
+                                key={asset.name}
+                                onClick={() => {
+                                    onSelect(asset);
+                                    setIsOpen(false);
+                                }}
+                                className="flex items-center gap-3 w-full px-4 py-3 hover:bg-[#3a3d4a] transition-colors first:rounded-t-xl last:rounded-b-xl"
+                            >
+                                <img 
+                                    src={asset.image} 
+                                    alt={asset.name} 
+                                    className="w-8 h-8 rounded-full"
+                                    onError={(e) => {
+                                        e.currentTarget.src = `https://via.placeholder.com/32x32/6b7280/ffffff?text=${asset.name.charAt(0)}`;
+                                    }}
+                                />
+                                <div className="text-left">
+                                    <div className="font-medium text-white">{asset.name}</div>
+                                    <div className="text-xs text-gray-400">{asset.name}</div>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                </>
+            )}
+        </div>
+    );
 }

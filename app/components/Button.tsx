@@ -1,35 +1,68 @@
+// components/Button.tsx
+'use client';
 
-export const PrimaryButton = ({children, onClick}: {
-    children: React.ReactNode,
-    onClick?: () => void
-}) => {
+import React from "react";
+import { LoadingDots } from "./LoadingDots";
 
-    return <div>
-        <button type="button" onClick={onClick} className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800">
-            {children}
-        </button>
-    </div>
+export function PrimaryButton({ 
+  children, 
+  onClick, 
+  className = '', 
+  disabled = false, 
+  loading = false 
+}: { 
+  children: React.ReactNode, 
+  onClick?: () => void, 
+  className?: string,
+  disabled?: boolean,
+  loading?: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled || loading}
+      className={`px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all duration-200 ${
+        disabled || loading
+          ? 'bg-gray-600 cursor-not-allowed opacity-50' 
+          : 'bg-gradient-to-r from-[#00D4FF] to-[#9945FF] hover:from-[#00B8E6] hover:to-[#8A3FE6] hover:shadow-lg'
+      } ${className}`}
+    >
+      {loading ? <LoadingDots /> : children}
+    </button>
+  );
 }
 
-export const SecondaryButton = ({children, onClick} : {
-    children: React.ReactNode,
-    onClick?: () => void,
-}) => {
-    return <div>
-        <button type="button" onClick={onClick} className=" text-white bg-gray-800 hover:bg-gray-900 focus:outline-none focus:ring-4 focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-gray-800 dark:hover:bg-gray-700 dark:focus:ring-gray-700 dark:border-gray-700">
-            {children}
-        </button>
-    </div>
+export function SecondaryButton({ children, onClick, className = '' }: { 
+  children: React.ReactNode, 
+  onClick?: () => void, 
+  className?: string 
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-4 py-2 rounded-xl font-semibold text-gray-200 bg-gray-800 border border-gray-600 hover:bg-gray-700 hover:border-gray-500 transition-colors ${className}`}
+    >
+      {children}
+    </button>
+  );
 }
 
-export const TabButton = ({active, children, onClick} : {
-    active: boolean,
-    children: React.ReactNode,
-    onClick: () => void,
-}) => {
-    return <div>
-         <button type="button" onClick={onClick} className={`text-white hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800 ${active ? "bg-blue-700 dark:bg-blue-700" : "bg-blue-400 dark:bg-blue-400"}`}>
-            {children}
-        </button>
-    </div>
+export function TabButton({ children, active, onClick, className = '' }: { 
+  children: React.ReactNode, 
+  active: boolean,
+  onClick?: () => void, 
+  className?: string 
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
+        active 
+          ? 'bg-gradient-to-r from-[#00D4FF] to-[#9945FF] text-white shadow-lg transform scale-105' 
+          : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+      } ${className}`}
+    >
+      {children}
+    </button>
+  );
 }

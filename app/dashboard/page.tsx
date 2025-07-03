@@ -37,3 +37,5 @@ export default async function () {
         <ProfileCard publicKey={userWallet.userWallet.publicKey} />
     </div>
 }
+
+
