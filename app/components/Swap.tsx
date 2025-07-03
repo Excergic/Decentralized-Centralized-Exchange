@@ -55,7 +55,7 @@ export const Swap = ({publicKey, tokenBalance} : {
         <div className="flex justify-center">
             <div onClick={() => {
                 let baseAsetTemp = baseAsset
-                setBaseAsset(quoteAsset)
+                setBaseAsset(quoteAsset)    
                 setQuoteAsset(baseAsetTemp)
             }} className="cursor-pointer rounded-full w-9 h-9 border-gray-700 mt-[-20px] absolute  bg-gray-700">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" className=" w-full h-full">
@@ -70,11 +70,18 @@ export const Swap = ({publicKey, tokenBalance} : {
             }} selectedToken = {quoteAsset} title={"You Receive:"}/>
         </div>
         <div className="flex justify-center pt-4">
-        <SecondaryButton onClick={() => {
+        <SecondaryButton onClick={async () => {
             // fetch swap
-            axios.post("/api/swap", {
-                quoteResponse
-            })
+            try{
+                const res = await axios.post("/api/swap", {
+                    quoteResponse
+                });
+                if(res.data.txid){
+                    alert("Swap successful!")
+                }
+            }catch(e){
+                alert("Swap failed!")
+            }
         }}>Swap</SecondaryButton>
         </div>
         
@@ -123,9 +130,14 @@ function AssetSelector({selectedToken, onSelect} : {
         }} id="tokens" className="bg-gray-900 text-white rounded-lg 
         text-sm px-5 py-2.5 me-2 mb-2 dark:bg-gray-800 dark:hover:bg-gray-700 
         focus:outline-none dark:focus:ring-gray-700 dark:border-gray-700">
-            <option selected><img src={selectedToken.image} className="w-10" />{selectedToken.name}</option>
+            <option selected = {true} value={selectedToken.name}>
+                <img src={selectedToken.image} className="w-10" />{selectedToken.name}
+            </option>
             {SUPPORTED_TOKENS.filter(asset => asset.name !== selectedToken.name).map(asset => <option key={asset.name} 
-            onClick={() => onSelect(asset)}><img src={asset.image} className="w-10" />{asset.name}</option>)}
+            onClick={() => onSelect(asset)} value={asset.name}><img src={asset.image} className="w-10" />{asset.name}</option>)}
+            <option value="SOL">
+                <img src={SUPPORTED_TOKENS[0].image} className="w-10" />{SUPPORTED_TOKENS[0].name}
+            </option>
         </select>
     </div>
 }

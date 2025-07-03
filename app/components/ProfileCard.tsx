@@ -45,7 +45,7 @@ export const ProfileCard = ({publicKey}: {
             />
             
             <div className="flex mt-5 justify-center">
-                {tabs.map((tab => <TabButton active={tab.id === selectedTab} onClick={() => {
+                {tabs.map((tab => <TabButton key={tab.id} active={tab.id === selectedTab} onClick={() => {
                     setSelectedTab(tab.id)
                 }}>{tab.name}</TabButton>))}
             </div>
